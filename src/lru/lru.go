@@ -101,15 +101,15 @@ func (c *Cache) Iter(f func(string, interface{})) {
 /**
  * Get a value
  */
-func (c *Cache) Get(key string) interface{} {
+func (c *Cache) Get(key string) (interface{}, bool) {
   c.RLock()
   defer c.RUnlock()
   v, ok := c.elem[key]
   if ok {
     c.lru.MoveToFront(v.elem)
-    return v.value
+    return v.value, true
   }else{
-    return nil
+    return nil, false
   }
 }
 
