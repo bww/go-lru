@@ -1,8 +1,6 @@
 
 export GOPATH := $(GOPATH):$(PWD)
 
-SRC=src/lru/*.go
-
 .PHONY: all deps test
 
 all: test
@@ -10,5 +8,5 @@ all: test
 deps:
 
 test:
-	go test lru -test.v
+	go test -test.v
 
