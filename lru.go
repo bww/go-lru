@@ -46,20 +46,49 @@ type cacheElement struct {
 }
 
 /**
+ * A key-value pair
+ */
+type KeyValue struct {
+  Key   string
+  Value interface{}
+}
+
+/**
  * A LRU memory cache
  */
 type Cache struct {
   sync.RWMutex
-  lru   *list.List
-  elem  map[string]*cacheElement
-  limit int
+  lru       *list.List
+  elem      map[string]*cacheElement
+  evicted   chan KeyValue
+  limit     int
 }
 
 /**
  * Create a cache
  */
 func NewCache(limit int) *Cache {
-  return &Cache{sync.RWMutex{}, list.New(), make(map[string]*cacheElement), limit}
+  return &Cache{sync.RWMutex{}, list.New(), make(map[string]*cacheElement), nil, limit}
+}
+
+/**
+ * Obtain the evicted element channel
+ */
+func (c *Cache) Evicted() <-chan KeyValue {
+  c.Lock()
+  defer c.Unlock()
+  return c.evictedChannel(64)
+}
+
+/**
+ * Obtain the evicted element channel. The channal is created if it does
+ * not yet exist. This method must be externally synchronized.
+ */
+func (c *Cache) evictedChannel(backlog int) chan KeyValue {
+  if c.evicted == nil {
+    c.evicted = make(chan KeyValue, backlog)
+  }
+  return c.evicted
 }
 
 /**
@@ -84,6 +113,8 @@ func (c *Cache) Show() {
  * Obtain the number of elements
  */
 func (c *Cache) Count() int {
+  c.RLock()
+  defer c.RUnlock()
   return len(c.elem)
 }
 
@@ -127,6 +158,9 @@ func (c *Cache) Set(key string, value interface{}) {
     if c.limit > 0 {
       for e := c.lru.Back(); len(c.elem) + 1 > c.limit; e = e.Prev() {
         key := e.Value.(string)
+        if c.evicted != nil {
+          c.evicted <- KeyValue{key, c.elem[key]}
+        }
         delete(c.elem, key)
         c.lru.Remove(e)
       }
