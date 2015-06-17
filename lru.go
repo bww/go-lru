@@ -121,12 +121,18 @@ func (c *Cache) Count() int {
 /**
  * Iterate over elements
  */
-func (c *Cache) Iter(f func(string, interface{})) {
+func (c *Cache) Iter(f func(string, interface{})(error)) error {
+  dup := make(map[string]*cacheElement)
   c.RLock()
-  defer c.RUnlock()
-  for k, v := range c.elem {
-    f(k, v.value)
+  for k, v := range c.elem { dup[k] = v }
+  c.RUnlock()
+  for k, v := range dup {
+    err := f(k, v.value)
+    if err != nil {
+      return err
+    }
   }
+  return nil
 }
 
 /**
