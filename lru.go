@@ -165,7 +165,8 @@ func (c *Cache) Set(key string, value interface{}) {
       for e := c.lru.Back(); len(c.elem) + 1 > c.limit; e = e.Prev() {
         key := e.Value.(string)
         if c.evicted != nil {
-          c.evicted <- KeyValue{key, c.elem[key]}
+          m := c.elem[key]
+          c.evicted <- KeyValue{m.key, m.value}
         }
         delete(c.elem, key)
         c.lru.Remove(e)
@@ -174,5 +175,21 @@ func (c *Cache) Set(key string, value interface{}) {
     v = &cacheElement{key:key, value:value}
     v.elem = c.lru.PushFront(key)
     c.elem[key] = v
+  }
+}
+
+/**
+ * Evict a value from the cache
+ */
+func (c *Cache) Delete(key string) {
+  c.Lock()
+  defer c.Unlock()
+  v, ok := c.elem[key]
+  if ok {
+    if c.evicted != nil {
+      c.evicted <- KeyValue{v.key, v.value}
+    }
+    delete(c.elem, key)
+    c.lru.Remove(v.elem)
   }
 }
