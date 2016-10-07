@@ -40,8 +40,7 @@ import (
  * Cache element
  */
 type cacheElement struct {
-  key   string
-  value interface{}
+  key, value interface{}
   elem  *list.Element
 }
 
@@ -49,8 +48,7 @@ type cacheElement struct {
  * A key-value pair
  */
 type KeyValue struct {
-  Key   string
-  Value interface{}
+  Key, Value interface{}
 }
 
 /**
@@ -59,7 +57,7 @@ type KeyValue struct {
 type Cache struct {
   sync.RWMutex
   lru       *list.List
-  elem      map[string]*cacheElement
+  elem      map[interface{}]*cacheElement
   evicted   chan KeyValue
   limit     int
 }
@@ -67,8 +65,8 @@ type Cache struct {
 /**
  * Create a cache
  */
-func NewCache(limit int) *Cache {
-  return &Cache{sync.RWMutex{}, list.New(), make(map[string]*cacheElement), nil, limit}
+func New(limit int) *Cache {
+  return &Cache{sync.RWMutex{}, list.New(), make(map[interface{}]*cacheElement), nil, limit}
 }
 
 /**
@@ -121,8 +119,8 @@ func (c *Cache) Count() int {
 /**
  * Iterate over elements
  */
-func (c *Cache) Iter(f func(string, interface{})(error)) error {
-  dup := make(map[string]*cacheElement)
+func (c *Cache) Iter(f func(interface{}, interface{})(error)) error {
+  dup := make(map[interface{}]*cacheElement)
   c.RLock()
   for k, v := range c.elem { dup[k] = v }
   c.RUnlock()
@@ -138,7 +136,7 @@ func (c *Cache) Iter(f func(string, interface{})(error)) error {
 /**
  * Get a value
  */
-func (c *Cache) Get(key string) (interface{}, bool) {
+func (c *Cache) Get(key interface{}) (interface{}, bool) {
   c.RLock()
   defer c.RUnlock()
   v, ok := c.elem[key]
@@ -153,7 +151,7 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 /**
  * Set a value
  */
-func (c *Cache) Set(key string, value interface{}) {
+func (c *Cache) Set(key, value interface{}) {
   c.Lock()
   defer c.Unlock()
   v, ok := c.elem[key]
@@ -163,7 +161,7 @@ func (c *Cache) Set(key string, value interface{}) {
   }else{
     if c.limit > 0 {
       for e := c.lru.Back(); len(c.elem) + 1 > c.limit; e = e.Prev() {
-        key := e.Value.(string)
+        key := e.Value
         if c.evicted != nil {
           m := c.elem[key]
           c.evicted <- KeyValue{m.key, m.value}
@@ -181,7 +179,7 @@ func (c *Cache) Set(key string, value interface{}) {
 /**
  * Evict a value from the cache
  */
-func (c *Cache) Delete(key string) {
+func (c *Cache) Delete(key interface{}) {
   c.Lock()
   defer c.Unlock()
   v, ok := c.elem[key]
