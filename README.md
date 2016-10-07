@@ -22,3 +22,17 @@ for i := 0; i < 10; i++ {
 v, found = c.Get("first")
 fmt.Println(found) // > false
 ```
+
+If you are interested when entries are evicted from the cache – for example, because you need to clean up after them – you can observe them on the evicted channel.
+
+```go
+go func(){
+  for e := range c.Evicted() {
+    fmt.Printf("%v -> %v", e.Key, e.Value)
+  }
+}()
+
+for i := 0; i < 20; i++ {
+  c.Set(fmt.Sprintf("%d", i), i)
+}
+```
