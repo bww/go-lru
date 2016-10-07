@@ -36,3 +36,5 @@ for i := 0; i < 20; i++ {
   c.Set(fmt.Sprintf("%d", i), i)
 }
 ```
+
+Note that once you call `Evicted` you must read elements from the channel until it is closed (i.e., forever) or its buffer will eventually fill and block other operations.
