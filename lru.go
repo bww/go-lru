@@ -138,10 +138,12 @@ func (c *Cache) Iter(f func(interface{}, interface{})(error)) error {
  */
 func (c *Cache) Get(key interface{}) (interface{}, bool) {
   c.RLock()
-  defer c.RUnlock()
   v, ok := c.elem[key]
+  c.RUnlock()
   if ok {
+    c.Lock()
     c.lru.MoveToFront(v.elem)
+    c.Unlock()
     return v.value, true
   }else{
     return nil, false
