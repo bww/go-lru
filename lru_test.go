@@ -1,7 +1,10 @@
 package lru
 
 import (
+  "sync"
+  "strconv"
   "testing"
+  "math/rand"
   "github.com/stretchr/testify/assert"
 )
 
@@ -42,4 +45,25 @@ func TestCache(t *testing.T) {
   v, ok = c.Get(4)
   assert.Equal(t, "4", v)
   
+}
+
+func TestConcurrent(t *testing.T) {
+  var waiter sync.WaitGroup
+  c := New(3)
+  
+  max := 100000
+  sem := make(chan struct{}, 25)
+  for i := 0; i < max; i++ {
+    sem <- struct{}{}
+    waiter.Add(1)
+    go func(){
+      defer func(){ <-sem; waiter.Done() }()
+      c.Set(i, strconv.FormatInt(int64(i), 10))
+      for j := 0; j < 10; j++ {
+        c.Get(rand.Int() % i) // just do an access
+      }
+    }()
+  }
+  
+  waiter.Wait()
 }
